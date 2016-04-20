@@ -1,13 +1,21 @@
 require 'unifi'
 require 'dotenv/tasks'
 require 'pry-byebug'
+require_relative 'lib/unifi_client'
 
-task scan: :dotenv do
-  controller = Unifi::Controller.new(host: ENV['UNIFI_CONTROLLER_ADDRESS'])
-  controller.login
-  # clients = controller.clients.map { |c| OpenStruct.new(c) }
-  clients = JSON.load(File.read "devices.json")["data"].map { |c| OpenStruct.new(c) }
-  clients.each do |c|
-    puts "#{c.ip.rjust(10)} - #{c.mac} - #{c.hostname}"
+FAKE_DATA = true  # Enable in dev mode (no controller)
+
+namespace :unifi do
+  desc "Print a list of all devices currently connected"
+  task devices: :dotenv do
+    unifi = UnifiClient.new
+    unifi.print_devices
+  end
+end
+
+namespace :cobot do
+  desc "Print a list of all active Cobot members"
+  task members: :dotenv do
+    # TODO
   end
 end
