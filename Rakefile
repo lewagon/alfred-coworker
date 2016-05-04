@@ -19,7 +19,8 @@ end
 namespace :cobot do
   desc "Generate a new Cobot access token"
   task token: :dotenv do
-    # https://www.cobot.me/oauth2_clients
+    # Check out the generated tokens here: https://www.cobot.me/oauth2_clients
+    #
     # https://www.cobot.me/api-docs/oauth-flow#app-flow
 
     conn = Faraday.new(:url => 'https://www.cobot.me') do |faraday|
@@ -30,6 +31,7 @@ namespace :cobot do
     response = conn.post '/oauth/access_token' do |req|
       req.params = {
         grant_type: 'password',
+        # scope:  specified here: https://www.cobot.me/oauth2_clients/e465154e42b61526d3149602987aac4c/edit
         username: ENV['COBOT_USERNAME'],
         password: ENV['COBOT_PASSWORD'],
         client_id: ENV['COBOT_CLIENT_ID'],
@@ -37,7 +39,7 @@ namespace :cobot do
       }
     end
 
-    puts "Here's your token (for scope #{ENV['COBOT_SCOPE']}):"
+    puts "Here's your token"
     puts "👉  #{response.body["access_token"]}"
   end
 
@@ -46,8 +48,41 @@ namespace :cobot do
     cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
     members = cobot.get('lewagon', '/memberships')
     members.each do |m|
-      puts "#{m[:name].rjust(30)} - #{m[:plan][:name]}"
+      custom_fields = cobot.get('lewagon', "/memberships/#{m[:id]}/custom_fields")[:fields].find { |e| e[:label] == "mac_address" }[:value]
+      puts "#{m[:name].rjust(30)} (#{m[:id]}) - #{m[:plan][:name]} - #{custom_fields}"
     end
-    puts "#{response.count} members"
+    puts "#{members.count} members"
+  end
+
+  namespace :time_pass do
+    desc "Create a time pass for a member"
+    task :create, [ :membership_id ] => :dotenv do |t, args|
+      membership_id = args[:membership_id]
+      cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
+      pass = {
+        "no_of_passes": 1,
+        "charge": "dont_charge",
+        "id": "0"  # Day Pass
+      }
+      puts cobot.post('lewagon', "/memberships/#{membership_id}/time_passes", pass)
+    end
+  end
+
+  namespace :check_in do
+    desc "Check-in a member"
+    task :create, [ :membership_id ] => :dotenv do |t, args|
+      membership_id = args[:membership_id]
+      cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
+
+      puts cobot.post('lewagon', "/memberships/#{membership_id}/work_sessions")
+    end
+
+    desc "List all today's check-ins"
+    task list: :dotenv do |t, args|
+      cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
+      cobot.get('lewagon', '/check_ins').each do |c|
+        puts "#{c[:membership][:name].rjust(30)} (#{c[:membership_id]}) - #{c[:valid_from]}"
+      end
+    end
   end
 end
