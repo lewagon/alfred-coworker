@@ -6,7 +6,7 @@ require 'faraday_middleware'
 require 'cobot_client'
 require_relative 'lib/unifi_client'
 
-FAKE_DATA = true  # Enable in dev mode (no controller)
+FAKE_DATA = false  # Enable in dev mode (no controller)
 
 namespace :unifi do
   desc "Print a list of all devices currently connected"
@@ -19,6 +19,7 @@ end
 namespace :cobot do
   desc "Generate a new Cobot access token"
   task token: :dotenv do
+    # https://www.cobot.me/oauth2_clients
     # https://www.cobot.me/api-docs/oauth-flow#app-flow
 
     conn = Faraday.new(:url => 'https://www.cobot.me') do |faraday|

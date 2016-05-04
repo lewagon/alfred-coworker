@@ -18,7 +18,7 @@ class UnifiClient
     else
       controller = Unifi::Controller.new(host: ENV['UNIFI_CONTROLLER_ADDRESS'])
       controller.login
-      json_clients = controller.devices
+      json_clients = controller.clients
     end
     @devices = json_clients.map { |c| OpenStruct.new(c) }
   end
