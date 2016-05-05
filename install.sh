@@ -3,4 +3,5 @@
 
 cd $1
 bundle install
+cp ~/.env/alfred-coworker/.env .
 bundle exec rake -T
