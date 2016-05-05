@@ -55,7 +55,7 @@ namespace :cobot do
   end
 
   namespace :time_pass do
-    desc "Create a time pass for a member"
+    desc "Create a dont_charge time pass for a member"
     task :create, [ :membership_id ] => :dotenv do |t, args|
       membership_id = args[:membership_id]
       cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
@@ -65,6 +65,13 @@ namespace :cobot do
         "id": "0"  # Day Pass
       }
       puts cobot.post('lewagon', "/memberships/#{membership_id}/time_passes", pass)
+    end
+
+    desc "List unused time passes for a member"
+    task :unused, [ :membership_id ] => :dotenv do |t, args|
+      membership_id = args[:membership_id]
+      cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
+      p cobot.get('lewagon', "/memberships/#{membership_id}/time_passes/unused")
     end
   end
 
@@ -82,6 +89,45 @@ namespace :cobot do
       cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
       cobot.get('lewagon', '/check_ins').each do |c|
         puts "#{c[:membership][:name].rjust(30)} (#{c[:membership_id]}) - #{c[:valid_from]}"
+      end
+    end
+
+    desc "'main' rake task to check-in all connected users"
+    task create_for_connected_devices: :dotenv do
+      cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
+      connected_devices = UnifiClient.new.devices
+      members = cobot.get('lewagon', '/memberships')
+      check_ins = cobot.get('lewagon', '/check_ins')
+
+      members.each do |m|
+        mac_address = cobot.get('lewagon', "/memberships/#{m[:id]}/custom_fields")[:fields].find { |e| e[:label] == "mac_address" }[:value]
+        unless mac_address == nil || mac_address == ""
+          mac_address.downcase!
+          if connected_devices.map(&:mac).map(&:downcase).include?(mac_address)    # Connected to Wifi
+            unless check_ins.map { |c| c[:membership_id] }.include?(m[:id])        # Not already Checked-in
+              puts "#{m[:name]} is connected to Wifi. Checking-in..."
+
+              begin
+                time_passes = cobot.get('lewagon', "/memberships/#{m[:id]}/time_passes/unused")
+                if time_passes.length == 0
+                  puts "No more ticket for #{m[:name]}, buying one..."
+                  pass = {
+                    "no_of_passes": 1,
+                    "charge": "charge",
+                    "id": "0"  # Day Pass
+                  }
+                  puts cobot.post('lewagon', "/memberships/#{membership_id}/time_passes", pass)
+                end
+                response = cobot.post('lewagon', "/memberships/#{m[:id]}/work_sessions")
+                puts "#{m[:name]} has been successfully checked-in."
+              rescue CobotClient::UnprocessableEntity
+                # Already checked-in. Should not arrive here.
+              end
+            else
+              puts "#{m[:name]} has already been checked-in for today."
+            end
+          end
+        end
       end
     end
   end
