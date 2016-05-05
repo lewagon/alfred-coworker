@@ -1,5 +1,7 @@
-PATH
-  remote: /Users/seb/code/ssaunier/unifi
+GIT
+  remote: git://github.com/ssaunier/unifi.git
+  revision: 06eb8b69eac9bcbdcb46c7b46c4b3b67266394fa
+  branch: list-connected-clients
   specs:
     unifi (0.1.0)
       addressable (~> 2.4.0)
