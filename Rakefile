@@ -121,7 +121,7 @@ namespace :cobot do
                     "charge": "charge",
                     "id": "0"  # Day Pass
                   }
-                  puts cobot.post('lewagon', "/memberships/#{membership_id}/time_passes", pass)
+                  puts cobot.post('lewagon', "/memberships/#{m[:id]}/time_passes", pass)
                 end
                 response = cobot.post('lewagon', "/memberships/#{m[:id]}/work_sessions")
                 puts "#{m[:name]} has been successfully checked-in."
