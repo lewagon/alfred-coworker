@@ -4,6 +4,9 @@ require 'pry-byebug'
 require 'faraday'
 require 'faraday_middleware'
 require 'cobot_client'
+require 'uri'
+require 'net/http'
+require 'net/https'
 require_relative 'lib/unifi_client'
 
 FAKE_DATA = false  # Enable in dev mode (no controller)
@@ -99,12 +102,14 @@ namespace :cobot do
       members = cobot.get('lewagon', '/memberships')
       check_ins = cobot.get('lewagon', '/check_ins')
 
+      connected_mac_addresses = connected_devices.map(&:mac).map(&:downcase)
+
       members.each do |m|
         mac_address = cobot.get('lewagon', "/memberships/#{m[:id]}/custom_fields")[:fields].find { |e| e[:label] == "mac_address" }[:value]
         unless mac_address == nil || mac_address == ""
           mac_address.downcase!
-          if connected_devices.map(&:mac).map(&:downcase).include?(mac_address)    # Connected to Wifi
-            unless check_ins.map { |c| c[:membership_id] }.include?(m[:id])        # Not already Checked-in
+          if connected_mac_addresses.include?(mac_address)                # Connected to Wifi
+            if !check_ins.map { |c| c[:membership_id] }.include?(m[:id])  # Not already Checked-in
               puts "#{m[:name]} is connected to Wifi. Checking-in..."
 
               begin
@@ -120,6 +125,16 @@ namespace :cobot do
                 end
                 response = cobot.post('lewagon', "/memberships/#{m[:id]}/work_sessions")
                 puts "#{m[:name]} has been successfully checked-in."
+
+                # Post to Slack
+                uri = URI.parse(ENV['SLACK_INCOMING_WEBHOOK_URL'])
+                https = Net::HTTP.new(uri.host, uri.port)
+                https.use_ssl = true
+                request = Net::HTTP::Post.new(
+                  uri.request_uri, {'Content-Type' =>'application/json'})
+                request.body = JSON.generate({ text: "#{m[:name]} has checked-in." })
+                https.request(request)
+
               rescue CobotClient::UnprocessableEntity
                 # Already checked-in. Should not arrive here.
               end
