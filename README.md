@@ -22,3 +22,15 @@ rake unifi:devices                                # Print a list of all devices 
 ```
 0,10,20,30,40,50 9-11,14-16 * * * cd /home/seb/deployment/current && /usr/local/opt/rbenv/shims/bundle exec rake cobot:check_in:create_for_connected_devices >> /var/log/cron.log 2>&1
 ```
+
+## Environment
+
+You need the following environment variables (in a `.env` file or directly in the environment):
+
+```
+UNIFI_USER
+UNIFI_PASSWORD
+UNIFI_CONTROLLER_ADDRESS
+COBOT_ACCESS_TOKEN
+SLACK_INCOMING_WEBHOOK_URL
+```
