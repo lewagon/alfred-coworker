@@ -1,0 +1,24 @@
+Some code put together to automatically check-in people on [Cobot](https://www.cobot.me/) when connecting to the [Unifi](https://www.ubnt.com/enterprise/#unifi) network.
+
+Still a lot to refactor and extract from `Rakefile`... Sorry for that!
+
+## Available tasks
+
+```bash
+$ rake -T
+rake cobot:check_in:create[membership_id]         # Check-in a member
+rake cobot:check_in:create_for_connected_devices  # 'main' rake task to check-in all connected users
+rake cobot:check_in:list                          # List all today's check-ins
+rake cobot:members                                # Print a list of all active Cobot members
+rake cobot:time_pass:create[membership_id]        # Create a dont_charge time pass for a member
+rake cobot:time_pass:unused[membership_id]        # List unused time passes for a member
+rake cobot:token                                  # Generate a new Cobot access token
+rake dotenv                                       # Load environment settings from .env
+rake unifi:devices                                # Print a list of all devices currently connected
+```
+
+## Cron job
+
+```
+0,10,20,30,40,50 9-11,14-16 * * * cd /home/seb/deployment/current && /usr/local/opt/rbenv/shims/bundle exec rake cobot:check_in:create_for_connected_devices >> /var/log/cron.log 2>&1
+```
