@@ -7,6 +7,7 @@ require 'cobot_client'
 require 'uri'
 require 'net/http'
 require 'net/https'
+require 'awesome_print'
 require_relative 'lib/unifi_client'
 
 FAKE_DATA = false  # Enable in dev mode (no controller)
@@ -64,7 +65,7 @@ namespace :cobot do
       cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
       pass = {
         "no_of_passes": 1,
-        "charge": "dont_charge",
+        "charge": "charge",
         "id": "0"  # Day Pass
       }
       puts cobot.post('lewagon', "/memberships/#{membership_id}/time_passes", pass)
@@ -75,6 +76,24 @@ namespace :cobot do
       membership_id = args[:membership_id]
       cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
       p cobot.get('lewagon', "/memberships/#{membership_id}/time_passes/unused")
+    end
+  end
+
+  namespace :plan do
+    desc "List plans for space"
+    task list: :dotenv do
+      cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
+      ap cobot.get('lewagon', '/plans')
+    end
+  end
+
+  namespace :invoice do
+    desc "List invoices for a member"
+    task :list, [ :membership_id ] => :dotenv do |t, args|
+      membership_id = args[:membership_id]
+      cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
+
+      cobot.get('lewagon', "/memberships/#{membership_id}/invoices").map { |invoice| pp invoice }
     end
   end
 
