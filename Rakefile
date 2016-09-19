@@ -213,7 +213,7 @@ namespace :cobot do
                 puts message
 
                 # Post to Slack
-                post_to_slack("#{m[:name]} has checked-in.")
+                post_to_slack(message)
               rescue CobotClient::UnprocessableEntity
                 # Already checked-in. Should not arrive here.
               end
