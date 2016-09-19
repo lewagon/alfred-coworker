@@ -24,6 +24,10 @@ def post_to_slack(message)
   https.request(request)
 end
 
+def today_check_ins_key
+  "check_ins:#{Date.today.to_s}"
+end
+
 $redis = Redis.new
 
 namespace :redis do
@@ -196,7 +200,17 @@ namespace :cobot do
                   puts cobot.post('lewagon', "/memberships/#{m[:id]}/time_passes", pass)
                 end
                 response = cobot.post('lewagon', "/memberships/#{m[:id]}/work_sessions")
-                puts "#{m[:name]} has been successfully checked-in."
+
+                coworkers = $redis.incr(today_check_ins_key)
+                if coworkers == 1
+                  message = ":sunrise: Say hello to #{m[:name]}, today's first coworker!"
+                else
+                  message = "#{m[:name]} has been successfully checked-in, #{coworkers} for today"
+                end
+                if coworkers % 10 == 0
+                  message = ":tada: #{message}"
+                end
+                puts message
 
                 # Post to Slack
                 post_to_slack("#{m[:name]} has checked-in.")
