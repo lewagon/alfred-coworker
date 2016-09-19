@@ -181,11 +181,11 @@ namespace :cobot do
       connected_mac_addresses = connected_clients.map(&:mac).map(&:downcase)
 
       members.each do |m|
-        mac_address = cobot.get('lewagon', "/memberships/#{m[:id]}/custom_fields")[:fields].find { |e| e[:label] == "mac_address" }[:value]
-        unless mac_address == nil || mac_address == ""
-          mac_address.downcase!
-          if connected_mac_addresses.include?(mac_address)                # Connected to Wifi
-            if !check_ins.map { |c| c[:membership_id] }.include?(m[:id])  # Not already Checked-in
+        mac_addresses = cobot.get('lewagon', "/memberships/#{m[:id]}/custom_fields")[:fields].find { |e| e[:label] == "mac_address" }[:value]
+        mac_addresses = (mac_addresses || "").split(",").map { |m| m.strip.downcase }
+        unless mac_addresses.size == 0
+          if mac_addresses.any? { |m| connected_mac_addresses.include?(m) } # Connected to Wifi
+            if !check_ins.map { |c| c[:membership_id] }.include?(m[:id])    # Not already Checked-in
               puts "#{m[:name]} is connected to Wifi. Checking-in..."
 
               begin
