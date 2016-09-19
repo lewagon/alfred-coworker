@@ -53,7 +53,7 @@ namespace :unifi do
       if client.name && client.name[0] == '['
         # OK, sorted on Unifi
       elsif client.hostname =~ /ipad|iphone|android/i
-        # OK, that's am obile
+        # OK, that's a mobile
       else
         device_name = unifi.devices[client.ap_mac]&.name
         message = "#{client.hostname} (#{client.mac} - #{client.oui}) connected to #{device_name} #{client._uptime_by_ugw / 60} minutes ago"
@@ -62,7 +62,7 @@ namespace :unifi do
         # Post to Slack
         key = "#{client.mac}:#{Date.today.to_s}:slack"
         if $redis.get(key)
-          # Ignore, alred as already been sent
+          # Ignore, alert has already been sent to Slack
         else
           post_to_slack(":warning: Squatter? #{message}")
           $redis.set(key, 'send')
