@@ -12,11 +12,45 @@ require_relative 'lib/unifi_client'
 
 FAKE_DATA = false  # Enable in dev mode (no controller)
 
+def post_to_slack(message)
+  uri = URI.parse(ENV['SLACK_INCOMING_WEBHOOK_URL'])
+  https = Net::HTTP.new(uri.host, uri.port)
+  https.use_ssl = true
+  request = Net::HTTP::Post.new(
+    uri.request_uri, {'Content-Type' =>'application/json'})
+  request.body = JSON.generate({ text: message })
+  https.request(request)
+end
+
 namespace :unifi do
-  desc "Print a list of all devices currently connected"
+  desc "Print a list of all clients currently connected"
+  task clients: :dotenv do
+    unifi = UnifiClient.new
+    unifi.print_clients
+  end
+
+  desc "Print a list of all devices (APs) currently connected"
   task devices: :dotenv do
     unifi = UnifiClient.new
     unifi.print_devices
+  end
+
+  desc "Detect squatters"
+  task squatters: :dotenv do |t, args|
+    unifi = UnifiClient.new
+    unifi.clients.each do |client|
+      if client.name && client.name[0] == '['
+        # OK, sorted on Unifi
+      elsif client.hostname =~ /ipad|iphone|android/i
+        # OK, that's am obile
+      else
+        device_name = unifi.devices[client.ap_mac]&.name
+        message = "#{client.hostname} (#{client.mac} - #{client.oui}) connected to #{device_name} #{client._uptime_by_ugw / 60} minutes ago"
+        puts message
+        # Post to Slack
+        post_to_slack(":warning: Squatter? #{message}")
+      end
+    end
   end
 end
 
@@ -115,13 +149,13 @@ namespace :cobot do
     end
 
     desc "'main' rake task to check-in all connected users"
-    task create_for_connected_devices: :dotenv do
+    task create_for_connected_clients: :dotenv do
       cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
-      connected_devices = UnifiClient.new.devices
+      connected_clients = UnifiClient.new.clients
       members = cobot.get('lewagon', '/memberships')
       check_ins = cobot.get('lewagon', '/check_ins')
 
-      connected_mac_addresses = connected_devices.map(&:mac).map(&:downcase)
+      connected_mac_addresses = connected_clients.map(&:mac).map(&:downcase)
 
       members.each do |m|
         mac_address = cobot.get('lewagon', "/memberships/#{m[:id]}/custom_fields")[:fields].find { |e| e[:label] == "mac_address" }[:value]
@@ -146,14 +180,7 @@ namespace :cobot do
                 puts "#{m[:name]} has been successfully checked-in."
 
                 # Post to Slack
-                uri = URI.parse(ENV['SLACK_INCOMING_WEBHOOK_URL'])
-                https = Net::HTTP.new(uri.host, uri.port)
-                https.use_ssl = true
-                request = Net::HTTP::Post.new(
-                  uri.request_uri, {'Content-Type' =>'application/json'})
-                request.body = JSON.generate({ text: "#{m[:name]} has checked-in." })
-                https.request(request)
-
+                post_to_slack("#{m[:name]} has checked-in.")
               rescue CobotClient::UnprocessableEntity
                 # Already checked-in. Should not arrive here.
               end
