@@ -25,7 +25,7 @@ rake unifi:squatters                              # Detect squatters
 ## Cron job
 
 ```
-0,10,20,30,40,50 9-11,14-16 * * * cd /home/seb/deployment/current && /usr/local/opt/rbenv/shims/bundle exec rake cobot:check_in:create_for_connected_clients >> /var/log/cron.log 2>&1
+0,10,20,30,40,50 9-11,14-16 * * * cd /home/seb/deployment/current && /usr/local/opt/rbenv/shims/bundle exec rake cobot:check_in:create_for_connected_clients unifi:squatters >> /var/log/cron.log 2>&1
 ```
 
 ## Environment
