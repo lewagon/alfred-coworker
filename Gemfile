@@ -1,5 +1,6 @@
 source "https://rubygems.org"
 
+gem "redis"
 gem "pry-byebug"
 gem "rake"
 gem "dotenv"

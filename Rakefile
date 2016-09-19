@@ -8,6 +8,8 @@ require 'uri'
 require 'net/http'
 require 'net/https'
 require 'awesome_print'
+require 'redis'
+require 'date'
 require_relative 'lib/unifi_client'
 
 FAKE_DATA = false  # Enable in dev mode (no controller)
@@ -20,6 +22,15 @@ def post_to_slack(message)
     uri.request_uri, {'Content-Type' =>'application/json'})
   request.body = JSON.generate({ text: message })
   https.request(request)
+end
+
+$redis = Redis.new
+
+namespace :redis do
+  desc "PING Redis"
+  task ping: :dotenv do
+    puts $redis.ping
+  end
 end
 
 namespace :unifi do
@@ -47,8 +58,16 @@ namespace :unifi do
         device_name = unifi.devices[client.ap_mac]&.name
         message = "#{client.hostname} (#{client.mac} - #{client.oui}) connected to #{device_name} #{client._uptime_by_ugw / 60} minutes ago"
         puts message
+
         # Post to Slack
-        post_to_slack(":warning: Squatter? #{message}")
+        key = "#{client.mac}:#{Date.today.to_s}:slack"
+        if $redis.get(key)
+          # Ignore, alred as already been sent
+        else
+          post_to_slack(":warning: Squatter? #{message}")
+          $redis.set(key, 'send')
+          $redis.expire(key, 3600 * 24)
+        end
       end
     end
   end
