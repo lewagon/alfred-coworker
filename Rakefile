@@ -60,7 +60,7 @@ namespace :unifi do
         # OK, that's a mobile
       else
         device_name = unifi.devices[client.ap_mac]&.name
-        message = "#{client.hostname} (#{client.mac} - #{client.oui}) connected to #{device_name} #{client._uptime_by_ugw / 60} minutes ago"
+        message = "#{client.hostname} (#{client.mac} - #{client.oui}) connected to #{device_name} #{(client._uptime_by_ugw || 0) / 60} minute(s) ago"
         puts message
 
         # Post to Slack
