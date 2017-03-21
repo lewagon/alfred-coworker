@@ -111,6 +111,7 @@ namespace :cobot do
     cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
     members = cobot.get('lewagon', '/memberships')
     members.each do |m|
+      binding.pry
       custom_fields = cobot.get('lewagon', "/memberships/#{m[:id]}/custom_fields")[:fields]
       mac_address = custom_fields.find { |e| e[:label] == "mac_address" }[:value] || ""
       github_nickname = custom_fields.find { |e| e[:label] == "github_nickname" }[:value] || ""
@@ -215,6 +216,22 @@ namespace :cobot do
                 else
                   puts "But he/she's not working today..."
                 end
+              end
+
+              # Is this the first time we see this member?
+              existing_check_ins = cobot.get('lewagon', "/memberships/#{m[:id]}/check_ins/", from: Date.new(2016, 1, 1), to: Date.today)
+              if existing_check_ins.length == 0
+                # First day is free!
+
+                pass = {
+                  "no_of_passes": 1,
+                  "charge": "dont_charge",
+                  "id": "0"  # Day Pass
+                }
+                cobot.post('lewagon', "/memberships/#{m[:id]}/time_passes", pass)
+                message = ":free: #{m[:name]} is new in the Cowork. Granting 1 free pass for first day!"
+                puts message
+                post_to_slack(message)
               end
 
               begin
