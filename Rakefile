@@ -10,6 +10,8 @@ require 'net/https'
 require 'awesome_print'
 require 'redis'
 require 'date'
+require 'json'
+require 'rest-client'
 require_relative 'lib/unifi_client'
 
 FAKE_DATA = false  # Enable in dev mode (no controller)
@@ -109,8 +111,10 @@ namespace :cobot do
     cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
     members = cobot.get('lewagon', '/memberships')
     members.each do |m|
-      custom_fields = cobot.get('lewagon', "/memberships/#{m[:id]}/custom_fields")[:fields].find { |e| e[:label] == "mac_address" }[:value]
-      puts "#{m[:name].rjust(30)} (#{m[:id]}) - #{m[:plan][:name]} - #{custom_fields}"
+      custom_fields = cobot.get('lewagon', "/memberships/#{m[:id]}/custom_fields")[:fields]
+      mac_address = custom_fields.find { |e| e[:label] == "mac_address" }[:value] || ""
+      github_nickname = custom_fields.find { |e| e[:label] == "github_nickname" }[:value] || ""
+      puts "#{m[:name].ljust(30)} - #{mac_address.ljust(17)} - #{github_nickname.ljust(15)} - https://lewagon.cobot.me/admin/memberships/#{m[:id]}"
     end
     puts "#{members.count} members"
   end
@@ -181,12 +185,37 @@ namespace :cobot do
       connected_mac_addresses = connected_clients.map(&:mac).map(&:downcase)
 
       members.each do |m|
-        mac_addresses = cobot.get('lewagon', "/memberships/#{m[:id]}/custom_fields")[:fields].find { |e| e[:label] == "mac_address" }[:value]
+        custom_fields = cobot.get('lewagon', "/memberships/#{m[:id]}/custom_fields")[:fields]
+        mac_addresses = custom_fields.find { |e| e[:label] == "mac_address" }[:value]
         mac_addresses = (mac_addresses || "").split(",").map { |m| m.strip.downcase }
         unless mac_addresses.size == 0
           if mac_addresses.any? { |m| connected_mac_addresses.include?(m) } # Connected to Wifi
             if !check_ins.map { |c| c[:membership_id] }.include?(m[:id])    # Not already Checked-in
               puts "#{m[:name]} is connected to Wifi. Checking-in..."
+
+              # Is this mac address a TA?
+              github_nickname = custom_fields.find { |e| e[:label] == "github_nickname" }[:value] || ""
+              unless github_nickname !~ /\S/
+                # Is this TA working today?
+                puts "Ah ah, we have a TA! #{github_nickname}"
+                response = JSON.parse(RestClient.get "http://kitt.lewagon.org/api/v1/users/works_today?github_nickname=#{github_nickname}")
+                if response['works_today']
+                  # Time to add some credits
+                  puts "And that's a work day. Adding 4 days (including current one) as free credit!"
+                  free_passes = 3
+                  pass = {
+                    "no_of_passes": free_passes + 1, # +1 for today's check-in
+                    "charge": "dont_charge",
+                    "id": "0"  # Day Pass
+                  }
+                  cobot.post('lewagon', "/memberships/#{m[:id]}/time_passes", pass)
+                  message = ":ticket: #{m[:name]} (#{github_nickname}) is a TA today. Granting #{free_passes} free passes for future days."
+                  puts message
+                  post_to_slack(message)
+                else
+                  puts "But he/she's not working today..."
+                end
+              end
 
               begin
                 time_passes = cobot.get('lewagon', "/memberships/#{m[:id]}/time_passes/unused")
@@ -197,7 +226,7 @@ namespace :cobot do
                     "charge": "charge",
                     "id": "0"  # Day Pass
                   }
-                  puts cobot.post('lewagon', "/memberships/#{m[:id]}/time_passes", pass)
+                  cobot.post('lewagon', "/memberships/#{m[:id]}/time_passes", pass)
                 end
                 response = cobot.post('lewagon', "/memberships/#{m[:id]}/work_sessions")
 
