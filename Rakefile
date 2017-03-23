@@ -196,6 +196,7 @@ namespace :cobot do
 
               # Is this mac address a TA?
               github_nickname = custom_fields.find { |e| e[:label] == "github_nickname" }[:value] || ""
+              ta = false
               unless github_nickname !~ /\S/
                 # Is this TA working today?
                 puts "Ah ah, we have a TA! #{github_nickname}"
@@ -213,6 +214,7 @@ namespace :cobot do
                   message = ":ticket: #{m[:name]} (#{github_nickname}) is a TA today. Granting #{free_passes} free passes for future days."
                   puts message
                   post_to_slack(message)
+                  ta = true
                 else
                   puts "But he/she's not working today..."
                 end
@@ -247,19 +249,21 @@ namespace :cobot do
                 end
                 response = cobot.post('lewagon', "/memberships/#{m[:id]}/work_sessions")
 
-                coworkers = $redis.incr(today_check_ins_key)
-                if coworkers == 1
-                  message = ":sunrise: Say hello to #{m[:name]}, today's first coworker!"
-                else
-                  message = "#{m[:name]} has been successfully checked-in, #{coworkers} for today"
-                end
-                if coworkers % 10 == 0
-                  message = ":tada: #{message}"
-                end
-                puts message
+                unless ta
+                  coworkers = $redis.incr(today_check_ins_key)
+                  if coworkers == 1
+                    message = ":sunrise: Say hello to #{m[:name]}, today's first coworker!"
+                  else
+                    message = "#{m[:name]} has been successfully checked-in, #{coworkers} for today"
+                  end
+                  if coworkers % 10 == 0
+                    message = ":tada: #{message}"
+                  end
+                  puts message
 
-                # Post to Slack
-                post_to_slack(message)
+                  # Post to Slack
+                  post_to_slack(message)
+                end
               rescue CobotClient::UnprocessableEntity
                 # Already checked-in. Should not arrive here.
               end
