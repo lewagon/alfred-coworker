@@ -200,7 +200,7 @@ namespace :cobot do
               unless github_nickname !~ /\S/
                 # Is this TA working today?
                 puts "Ah ah, we have a TA! #{github_nickname}"
-                response = JSON.parse(RestClient.get "http://kitt.lewagon.org/api/v1/users/works_today?github_nickname=#{github_nickname}")
+                response = JSON.parse(RestClient.get "https://kitt.lewagon.com/api/v1/users/works_today?github_nickname=#{github_nickname}")
                 if response['works_today']
                   # Time to add some credits
                   puts "And that's a work day. Adding 4 days (including current one) as free credit!"
