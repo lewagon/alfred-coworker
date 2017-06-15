@@ -12,7 +12,7 @@ class UnifiClient
       # #{c.ip.rjust(10)} -
       if c.name && c.name[0] == '['
         puts "[OK] #{c.mac} - #{devices[c.ap_mac]&.name} - #{c.name} (#{c.oui})"
-      elsif c.hostname =~ /ipad|iphone|android/i
+      elsif c.hostname =~ /ipad|iphone|android|galaxy/i
         puts "[OK] #{c.mac} - #{devices[c.ap_mac]&.name} - #{c.hostname} (#{c.oui})"
       else
         puts "[??] #{c.mac} - #{devices[c.ap_mac]&.name} - #{c.hostname} (#{c.oui})"
