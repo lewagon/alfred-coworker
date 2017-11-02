@@ -39,6 +39,33 @@ namespace :redis do
   end
 end
 
+namespace :lifx do
+  task :update, [ :camp_slug ] => :dotenv do |t, args|
+    camp_slug = args[:camp_slug]
+    raise "You must specify a camp slug" if camp_slug.to_i == 0
+    response = JSON.parse RestClient.get("http://kitt.lewagon.com/api/v1/camps/#{camp_slug}/color")
+    if Time.now.hour >= 9 && Time.now.hour <= 19
+      case response["color"]
+      when "grey"
+        params = { power: :on, color: :white, brightness: 0.05 }
+      when "green"
+        params = { power: :on, color: :green, brightness: 0.1 }
+      when "orange"
+        params = { power: :on, color: :yellow, brightness: 0.1 }
+      when "red"
+        params = { power: :on, color: :red, brightness: 0.25 }
+      end
+    else
+      params = { power: :off }
+    end
+    RestClient.put("https://api.lifx.com/v1/lights/id:#{ENV['LIFX_LAMP_ID']}/state",
+      params,
+      {
+        "Authorization": "Bearer #{ENV["LIFX_TOKEN"]}"
+      })
+  end
+end
+
 namespace :unifi do
   desc "Print a list of all clients currently connected"
   task clients: :dotenv do
