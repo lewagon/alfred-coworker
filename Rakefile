@@ -46,15 +46,25 @@ namespace :lifx do
     params = { power: :off }
     if Time.now.hour >= 9 && Time.now.hour <= 19
       params = case response["color"]
-      when "grey"   then { color: :white,  brightness: 0.05 }
-      when "green"  then { color: :green,  brightness: 0.1 }
-      when "orange" then { color: :yellow, brightness: 0.1 }
+      when "grey"   then { color: :white,  brightness: 0.15 }
+      when "green"  then { color: :green,  brightness: 0.15 }
+      when "orange" then { color: :yellow, brightness: 0.15 }
       when "red"    then { color: :red,    brightness: 0.25 }
       end
       params[:power] = :on
     end
     RestClient.put("https://api.lifx.com/v1/lights/id:#{ENV['LIFX_LAMP_ID']}/state",
       params, { "Authorization": "Bearer #{ENV["LIFX_TOKEN"]}" })
+
+    if response["lunch_break"]
+      params = {
+        cycles: 12,
+        period: 5, # cronjob is run every minute. 5 * 12 = 60s
+        color: "brightness:0.05",
+      }
+      RestClient.post("https://api.lifx.com/v1/lights/id:#{ENV['LIFX_LAMP_ID']}/effects/breathe",
+        params, { "Authorization": "Bearer #{ENV["LIFX_TOKEN"]}" })
+    end
   end
 end
 
