@@ -40,9 +40,8 @@ namespace :redis do
 end
 
 namespace :lifx do
-  task :update, [ :camp_slug ] => :dotenv do |t, args|
-    raise "You must specify a camp slug" if args[:camp_slug].to_i == 0
-    response = JSON.parse RestClient.get("https://kitt.lewagon.com/api/v1/camps/#{args[:camp_slug]}/color")
+  task update: :environment do |t, args|
+    response = JSON.parse RestClient.get("https://kitt.lewagon.com/api/v1/camps/#{ENV['LIFX_CAMP_SLUG']}/color")
     params = { power: :off }
     if Time.now.hour >= 9 && Time.now.hour <= 19
       params = case response["color"]
@@ -58,8 +57,8 @@ namespace :lifx do
 
     if response["lunch_break"]
       params = {
-        cycles: 20,
-        period: 3, # cronjob is run every minute. 5 * 12 = 60s
+        cycles: 3,
+        period: 3,
         color: "brightness:0.01",
       }
       puts RestClient.post("https://api.lifx.com/v1/lights/id:#{ENV['LIFX_LAMP_ID']}/effects/breathe",
