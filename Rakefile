@@ -52,7 +52,7 @@ namespace :lifx do
       end
       params[:power] = :on
     end
-    RestClient.put("https://api.lifx.com/v1/lights/id:#{ENV['LIFX_LAMP_ID']}/state",
+    puts RestClient.put("https://api.lifx.com/v1/lights/id:#{ENV['LIFX_LAMP_ID']}/state",
       params, { "Authorization": "Bearer #{ENV["LIFX_TOKEN"]}" })
 
     if response["lunch_break"]
