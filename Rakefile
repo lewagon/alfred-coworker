@@ -58,11 +58,11 @@ namespace :lifx do
 
     if response["lunch_break"]
       params = {
-        cycles: 12,
-        period: 5, # cronjob is run every minute. 5 * 12 = 60s
-        color: "brightness:0.05",
+        cycles: 20,
+        period: 3, # cronjob is run every minute. 5 * 12 = 60s
+        color: "brightness:0.01",
       }
-      RestClient.post("https://api.lifx.com/v1/lights/id:#{ENV['LIFX_LAMP_ID']}/effects/breathe",
+      puts RestClient.post("https://api.lifx.com/v1/lights/id:#{ENV['LIFX_LAMP_ID']}/effects/breathe",
         params, { "Authorization": "Bearer #{ENV["LIFX_TOKEN"]}" })
     end
   end
