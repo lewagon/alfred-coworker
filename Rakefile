@@ -22,7 +22,7 @@ def post_to_slack(message)
   https.use_ssl = true
   request = Net::HTTP::Post.new(
     uri.request_uri, {'Content-Type' =>'application/json'})
-  request.body = JSON.generate({ text: message })
+  request.body = JSON.generate({ text: "[#{ENV['LOCATION']}] #{message}" })
   https.request(request)
 end
 
