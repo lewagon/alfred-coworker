@@ -43,7 +43,7 @@ namespace :lifx do
   task update: :environment do |t, args|
     response = JSON.parse RestClient.get("https://kitt.lewagon.com/api/v1/camps/#{ENV['LIFX_CAMP_SLUG']}/color")
     params = { power: :off }
-    if Time.now.hour >= 9 && Time.now.hour <= 19
+    if Time.now.hour >= 9 && Time.now.hour <= 20
       params = case response["color"]
       when "grey"   then { color: :white,  brightness: 0.15 }
       when "green"  then { color: :green,  brightness: 0.15 }
