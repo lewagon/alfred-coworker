@@ -13,7 +13,7 @@ class UnifiClient
       if c.name && c.name[0] == '['
         puts "[OK] #{c.mac} - #{devices[c.ap_mac]&.name} - #{c.name} (#{c.oui})"
       elsif c.hostname =~ /ipad|iphone|android|galaxy/i
-        puts "[OK] #{c.mac} - #{devices[c.ap_mac]&.name} - #{c.hostname} (#{c.oui})"
+        puts "[OK] #{c.mac} - #{devices[c.ap_mac]&.name} - #{c.hostname} (#{c.oui}) - #{c.network}"
       else
         puts "[??] #{c.mac} - #{devices[c.ap_mac]&.name} - #{c.hostname} (#{c.oui})"
       end
@@ -37,7 +37,10 @@ class UnifiClient
       controller.login
       json_clients = controller.clients
     end
-    json_clients.map { |c| OpenStruct.new(c) }
+    json_clients.map { |c| OpenStruct.new(c) }.reject do |c|
+      # Exception for London:
+      c.network =~ /office downstairs/i
+    end
   end
 
   def fetch_devices
