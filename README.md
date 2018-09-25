@@ -35,7 +35,13 @@ You need the following environment variables (in a `.env` file or directly in th
 ```
 UNIFI_USER
 UNIFI_PASSWORD
-UNIFI_CONTROLLER_ADDRESS
 COBOT_ACCESS_TOKEN
+```
+
+On the command line:
+
+```
+UNIFI_CONTROLLER_ADDRESS
+COBOT_ACCOUNT
 SLACK_INCOMING_WEBHOOK_URL
 ```

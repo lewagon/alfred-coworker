@@ -22,12 +22,12 @@ def post_to_slack(message)
   https.use_ssl = true
   request = Net::HTTP::Post.new(
     uri.request_uri, {'Content-Type' =>'application/json'})
-  request.body = JSON.generate({ text: "[#{ENV['LOCATION']}] #{message}" })
+  request.body = JSON.generate({ text: ENV['LOCATION'].nil? ? message : "[#{ENV['LOCATION']}] #{message}" })
   https.request(request)
 end
 
 def today_check_ins_key
-  "check_ins:#{Date.today.to_s}"
+  "check_ins:#{ENV['COBOT_ACCOUNT']}:#{Date.today.to_s}"
 end
 
 $redis = Redis.new
@@ -36,34 +36,6 @@ namespace :redis do
   desc "PING Redis"
   task ping: :dotenv do
     puts $redis.ping
-  end
-end
-
-namespace :lifx do
-  task update: :environment do |t, args|
-    response = JSON.parse RestClient.get("https://kitt.lewagon.com/api/v1/camps/#{ENV['LIFX_CAMP_SLUG']}/color")
-    params = { power: :off }
-    if Time.now.hour >= 9 && Time.now.hour <= 20
-      params = case response["color"]
-      when "grey"   then { color: :white,  brightness: 0.15 }
-      when "green"  then { color: :green,  brightness: 0.15 }
-      when "orange" then { color: :yellow, brightness: 0.15 }
-      when "red"    then { color: :red,    brightness: 0.25 }
-      end
-      params[:power] = :on
-    end
-    puts RestClient.put("https://api.lifx.com/v1/lights/id:#{ENV['LIFX_LAMP_ID']}/state",
-      params, { "Authorization": "Bearer #{ENV["LIFX_TOKEN"]}" })
-
-    if response["lunch_break"]
-      params = {
-        cycles: 3,
-        period: 3,
-        color: "brightness:0.01",
-      }
-      puts RestClient.post("https://api.lifx.com/v1/lights/id:#{ENV['LIFX_LAMP_ID']}/effects/breathe",
-        params, { "Authorization": "Bearer #{ENV["LIFX_TOKEN"]}" })
-    end
   end
 end
 
@@ -137,10 +109,9 @@ namespace :cobot do
   desc "Print a list of all active Cobot members"
   task members: :dotenv do
     cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
-    members = cobot.get('lewagon', '/memberships')
+    members = cobot.get(ENV['COBOT_ACCOUNT'], '/memberships')
     members.each do |m|
-      binding.pry
-      custom_fields = cobot.get('lewagon', "/memberships/#{m[:id]}/custom_fields")[:fields]
+      custom_fields = cobot.get(ENV['COBOT_ACCOUNT'], "/memberships/#{m[:id]}/custom_fields")[:fields]
       mac_address = custom_fields.find { |e| e[:label] == "mac_address" }[:value] || ""
       github_nickname = custom_fields.find { |e| e[:label] == "github_nickname" }[:value] || ""
       puts "#{m[:name].ljust(30)} - #{mac_address.ljust(17)} - #{github_nickname.ljust(15)} - https://lewagon.cobot.me/admin/memberships/#{m[:id]}"
@@ -158,14 +129,14 @@ namespace :cobot do
         "charge": "charge",
         "id": "0"  # Day Pass
       }
-      puts cobot.post('lewagon', "/memberships/#{membership_id}/time_passes", pass)
+      puts cobot.post(ENV['COBOT_ACCOUNT'], "/memberships/#{membership_id}/time_passes", pass)
     end
 
     desc "List unused time passes for a member"
     task :unused, [ :membership_id ] => :dotenv do |t, args|
       membership_id = args[:membership_id]
       cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
-      p cobot.get('lewagon', "/memberships/#{membership_id}/time_passes/unused")
+      p cobot.get(ENV['COBOT_ACCOUNT'], "/memberships/#{membership_id}/time_passes/unused")
     end
   end
 
@@ -173,7 +144,7 @@ namespace :cobot do
     desc "List plans for space"
     task list: :dotenv do
       cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
-      ap cobot.get('lewagon', '/plans')
+      ap cobot.get(ENV['COBOT_ACCOUNT'], '/plans')
     end
   end
 
@@ -183,7 +154,7 @@ namespace :cobot do
       membership_id = args[:membership_id]
       cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
 
-      cobot.get('lewagon', "/memberships/#{membership_id}/invoices").map { |invoice| pp invoice }
+      cobot.get(ENV['COBOT_ACCOUNT'], "/memberships/#{membership_id}/invoices").map { |invoice| pp invoice }
     end
   end
 
@@ -193,13 +164,13 @@ namespace :cobot do
       membership_id = args[:membership_id]
       cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
 
-      puts cobot.post('lewagon', "/memberships/#{membership_id}/work_sessions")
+      puts cobot.post(ENV['COBOT_ACCOUNT'], "/memberships/#{membership_id}/work_sessions")
     end
 
     desc "List all today's check-ins"
     task list: :dotenv do |t, args|
       cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
-      cobot.get('lewagon', '/check_ins').each do |c|
+      cobot.get(ENV['COBOT_ACCOUNT'], '/check_ins').each do |c|
         puts "#{c[:membership][:name].rjust(30)} (#{c[:membership_id]}) - #{c[:valid_from]}"
       end
     end
@@ -208,13 +179,13 @@ namespace :cobot do
     task create_for_connected_clients: :dotenv do
       cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
       connected_clients = UnifiClient.new.clients
-      members = cobot.get('lewagon', '/memberships')
-      check_ins = cobot.get('lewagon', '/check_ins')
+      members = cobot.get(ENV['COBOT_ACCOUNT'], '/memberships')
+      check_ins = cobot.get(ENV['COBOT_ACCOUNT'], '/check_ins')
 
       connected_mac_addresses = connected_clients.map(&:mac).map(&:downcase)
 
       members.each do |m|
-        custom_fields = cobot.get('lewagon', "/memberships/#{m[:id]}/custom_fields")[:fields]
+        custom_fields = cobot.get(ENV['COBOT_ACCOUNT'], "/memberships/#{m[:id]}/custom_fields")[:fields]
         mac_addresses = custom_fields.find { |e| e[:label] == "mac_address" }[:value]
         mac_addresses = (mac_addresses || "").split(",").map { |m| m.strip.downcase }
         unless mac_addresses.size == 0
@@ -238,7 +209,7 @@ namespace :cobot do
                     "charge": "dont_charge",
                     "id": "0"  # Day Pass
                   }
-                  cobot.post('lewagon', "/memberships/#{m[:id]}/time_passes", pass)
+                  cobot.post(ENV['COBOT_ACCOUNT'], "/memberships/#{m[:id]}/time_passes", pass)
                   message = ":ticket: #{m[:name]} (#{github_nickname}) is a TA today. Granting #{free_passes} free passes for future days."
                   puts message
                   post_to_slack(message)
@@ -249,7 +220,7 @@ namespace :cobot do
               end
 
               # Is this the first time we see this member?
-              existing_check_ins = cobot.get('lewagon', "/memberships/#{m[:id]}/check_ins/", from: Date.new(2016, 1, 1), to: Date.today)
+              existing_check_ins = cobot.get(ENV['COBOT_ACCOUNT'], "/memberships/#{m[:id]}/check_ins/", from: Date.new(2016, 1, 1), to: Date.today)
               if existing_check_ins.length == 0
                 # First day is free!
 
@@ -258,14 +229,14 @@ namespace :cobot do
                   "charge": "dont_charge",
                   "id": "0"  # Day Pass
                 }
-                cobot.post('lewagon', "/memberships/#{m[:id]}/time_passes", pass)
+                cobot.post(ENV['COBOT_ACCOUNT'], "/memberships/#{m[:id]}/time_passes", pass)
                 message = ":free: #{m[:name]} is new in the Cowork. Granting 1 free pass for first day!"
                 puts message
                 post_to_slack(message)
               end
 
               begin
-                time_passes = cobot.get('lewagon', "/memberships/#{m[:id]}/time_passes/unused")
+                time_passes = cobot.get(ENV['COBOT_ACCOUNT'], "/memberships/#{m[:id]}/time_passes/unused")
                 if time_passes.length == 0
                   puts "No more ticket for #{m[:name]}, buying one..."
                   pass = {
@@ -273,9 +244,9 @@ namespace :cobot do
                     "charge": "charge",
                     "id": "0"  # Day Pass
                   }
-                  cobot.post('lewagon', "/memberships/#{m[:id]}/time_passes", pass)
+                  cobot.post(ENV['COBOT_ACCOUNT'], "/memberships/#{m[:id]}/time_passes", pass)
                 end
-                response = cobot.post('lewagon', "/memberships/#{m[:id]}/work_sessions")
+                response = cobot.post(ENV['COBOT_ACCOUNT'], "/memberships/#{m[:id]}/work_sessions")
 
                 unless ta
                   coworkers = $redis.incr(today_check_ins_key)
