@@ -178,13 +178,17 @@ namespace :cobot do
     desc "'main' rake task to check-in all connected users"
     task create_for_connected_clients: :dotenv do
       cobot = CobotClient::ApiClient.new(ENV['COBOT_ACCESS_TOKEN'])
+      puts "Fetching connected clients on Unifi"
       connected_clients = UnifiClient.new.clients
+      puts "Fetching Cobot members..."
       members = cobot.get(ENV['COBOT_ACCOUNT'], '/memberships')
+      puts "Fetching existing check-ins"
       check_ins = cobot.get(ENV['COBOT_ACCOUNT'], '/check_ins')
 
       connected_mac_addresses = connected_clients.map(&:mac).map(&:downcase)
 
       members.each do |m|
+        puts "Analysing #{m[:id]}..."
         custom_fields = cobot.get(ENV['COBOT_ACCOUNT'], "/memberships/#{m[:id]}/custom_fields")[:fields]
         mac_addresses = custom_fields.find { |e| e[:label] == "mac_address" }[:value]
         mac_addresses = (mac_addresses || "").split(",").map { |m| m.strip.downcase }
