@@ -58,7 +58,7 @@ namespace :unifi do
     unifi.clients.each do |client|
       if client.name && client.name[0] == '['
         # OK, sorted on Unifi
-      elsif client.hostname =~ /ipad|iphone|android|galaxy/i
+      elsif client.hostname =~ /ipad|iphone|android|galaxy|watch/i
         # OK, that's a mobile
       else
         device_name = unifi.devices[client.ap_mac]&.name
