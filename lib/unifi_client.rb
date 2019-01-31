@@ -33,7 +33,7 @@ class UnifiClient
     if ::FAKE_DATA
       json_clients = JSON.load(File.read(File.expand_path('../../clients.json', __FILE__)))["data"]
     else
-      controller = Unifi::Controller.new(host: ENV['UNIFI_CONTROLLER_ADDRESS'])
+      controller = Unifi::Controller.new(address)
       controller.login
       json_clients = controller.clients
     end
@@ -44,9 +44,16 @@ class UnifiClient
   end
 
   def fetch_devices
-    controller = Unifi::Controller.new(host: ENV['UNIFI_CONTROLLER_ADDRESS'])
+    controller = Unifi::Controller.new(address)
     controller.login
     json_devices = controller.devices
     json_devices.reduce(Hash.new) { |h, c| h[c["mac"]] = OpenStruct.new(c); h }
+  end
+
+  def address
+    {
+      host: ENV['UNIFI_CONTROLLER_ADDRESS'],
+      port: ENV.fetch('UNIFI_CONTROLLER_PORT', 8443)
+    }
   end
 end
